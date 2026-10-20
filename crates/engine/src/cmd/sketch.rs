@@ -1970,14 +1970,18 @@ fn dimension(s: &mut Session, p: &Value) -> Result<Value> {
     let start = s.doc.clone();
     let ((param, kind_name, current), info) = edit(s, p, cmd, true, |sk, doc| {
         before = Some(dof_now(sk));
-        let ent = |r: &str| -> Result<(Option<usize>, Option<usize>)> {
+        let mut ent = |r: &str| -> Result<(Option<usize>, Option<usize>)> {
             if let Some(c) = sk.curve_index(r) {
                 return Ok((None, Some(c)));
             }
             if let Some(q) = sk.resolve_point(r) {
                 return Ok((Some(q), None));
             }
-            Err(bad(cmd, format!("unknown sketch entity `{r}`")))
+            // `x` / `y`: the sketch's own axes, as the constraints take them (#3137).
+            if let Some(c) = sk.sketch_axis_line(r)? {
+                return Ok((None, Some(c)));
+            }
+            Err(bad(cmd, format!("unknown sketch entity `{r}` (x and y name the sketch's own axes)")))
         };
         let e0 = ent(ents.first().map(String::as_str).unwrap_or(""))?;
         let e1 = match ents.get(1) {

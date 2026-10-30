@@ -266,3 +266,24 @@ fn choosing_a_profile_in_preferences_applies_it() {
     assert_eq!(h.app.settings_profiles.active.as_deref(), Some("Large monitor"));
     assert!(h.app.preferences.zoom_reverse);
 }
+
+/// #9505: with every section that holds a slider folded, typing a profile name went to the
+/// Preferences search instead of the name field.
+#[test]
+fn typing_a_profile_name_stays_in_the_name_field() {
+    let mut h = Harness::new();
+    h.call("ui.prefs", json!({"open": "General"}));
+    h.frames(3);
+    for section in ["Language", "Autosave and recovery", "Largest file to open", "Slicer", "Updates"] {
+        h.step(&json!({"click": {"handle": format!("dialog:section:{section}")}})).unwrap();
+        h.frames(3);
+    }
+    h.step(&json!({"click": {"handle": "dialog:Name"}})).unwrap();
+    h.frames(3);
+    for ch in "Desk".chars() {
+        h.app.synthetic.push(egui::Event::Text(ch.to_string()));
+        h.frames(2);
+    }
+    assert_eq!(h.app.prefs_window.filter, "", "the Preferences search stays empty");
+    assert_eq!(h.app.settings_profiles.draft, "Desk", "the name field takes the typing");
+}

@@ -72,6 +72,25 @@ fn tab_visits_expression_fields_in_row_order() {
     assert_eq!(second, "2");
 }
 
+/// #9505: a focused text field tells Preferences it holds the keyboard, so typing a profile name
+/// does not go to the search field.
+#[test]
+fn a_focused_text_field_keeps_the_keys_from_the_preferences_search() {
+    let ctx = crate::fonts::test_context();
+    let mut name = String::new();
+    let mut draw = |ui: &mut Ui| {
+        row(ui, "Name", |ui| {
+            text_field(ui, &mut name, "Profile name");
+        });
+    };
+    frame(&ctx, vec![], &mut draw);
+    assert!(!crate::prefs_search::shift_key_sink(&ctx), "an unfocused field holds nothing");
+    let at = scenario::handle_at("dialog:Name").unwrap();
+    frame(&ctx, pointer(at, true), &mut draw);
+    frame(&ctx, pointer(at, false), &mut draw);
+    assert!(crate::prefs_search::shift_key_sink(&ctx), "the focused field holds the keyboard");
+}
+
 #[test]
 fn multiline_text_retains_focus_id_and_three_line_geometry() {
     let ctx = crate::fonts::test_context();

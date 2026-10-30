@@ -61,7 +61,7 @@ pub struct Profiles {
     /// The profile applied or saved last, while it exists.
     pub active: Option<String>,
     /// The name typed in Preferences.
-    draft: String,
+    pub(crate) draft: String,
     /// The last action's outcome in Preferences.
     message: Option<Outcome>,
 }

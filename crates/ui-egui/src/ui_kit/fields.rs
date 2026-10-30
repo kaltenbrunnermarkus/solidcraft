@@ -276,6 +276,11 @@ fn editor_reserving(ui: &mut Ui, value: &mut String, hint: &str, completion: boo
     }
     crate::theme::TabAccent::number_focus(ui, &response);
     t.input_bevel(ui, &response);
+    // Preferences types into its own search only while no field has the keyboard (#9505). Every
+    // other kit field says so; without this the profile name lost its letters to the search.
+    if response.has_focus() {
+        crate::prefs_search::note_key_sink(ui.ctx());
+    }
     let label = crate::i18n::tr_label(label(ui));
     response.widget_info(|| {
         let mut info = egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), label);

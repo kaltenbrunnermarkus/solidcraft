@@ -223,6 +223,117 @@ pub fn grid_step(half_height: f64) -> (f64, f64) {
     (minor, minor * 5.0)
 }
 
+/// How wide the cross-fade between two grid levels is, in powers of ten of the view's height
+/// (#9570): about 19% of zoom either side of the switch. The switches are at least
+/// `log10(2)` apart, so two cross-fades never overlap.
+const GRID_LEVEL_BLEND: f64 = 0.15;
+
+/// One level of the drawn grid: its spacing and how strongly it is drawn.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GridLevel {
+    pub minor: f64,
+    pub major: f64,
+    /// 0..1; the levels drawn at one zoom add up to 1.
+    pub weight: f32,
+}
+
+/// The grid levels drawn for a view of the given half height (#9570).
+///
+/// [`grid_step`] switches the spacing in a step (1, 2, 5 times a power of ten), so the whole grid
+/// used to swap at once as the view zoomed through a switch, popping over and over while
+/// scrolling. Near a switch the drawn grid now cross-fades: the outgoing and incoming levels are
+/// both drawn, weighted by how far the zoom is through the switch. Away from a switch only the
+/// level [`grid_step`] gives is drawn, at full strength, so the grid looks as it did. The level
+/// with the larger weight is always [`grid_step`]'s, which sketch snapping, dash lengths and
+/// the tools keep using unchanged: only the drawing fades.
+pub fn grid_levels(half_height: f64) -> Vec<GridLevel> {
+    let (minor, major) = grid_step(half_height);
+    let single = vec![GridLevel { minor, major, weight: 1.0 }];
+    let raw = half_height / 10.0;
+    // grid_step's floor: no finer level is ever drawn, so there is nothing to fade to.
+    if !raw.is_finite() || !minor.is_finite() || raw <= 1e-3 || minor <= 0.0 {
+        return single;
+    }
+    let p = 10f64.powf((minor.log10() + 1e-9).floor());
+    let mantissa = (minor / p).round();
+    // The neighbouring steps of the 1, 2, 5 sequence.
+    let (finer, coarser) = if mantissa < 1.5 {
+        (minor * 0.5, minor * 2.0)
+    } else if mantissa < 3.5 {
+        (minor * 0.5, minor * 2.5)
+    } else {
+        (minor * 0.4, minor * 2.0)
+    };
+    let half = GRID_LEVEL_BLEND * 0.5;
+    let l = raw.log10();
+    // Zooming out, the switch into the coarser level comes at `log10(coarser)`; zooming in,
+    // the switch into this level was at `log10(minor)`, below which the finer level returns.
+    let (lo, hi) = if coarser.log10() - l < half {
+        (minor, coarser)
+    } else if l - minor.log10() < half && finer >= 1e-3 * (1.0 - 1e-9) {
+        (finer, minor)
+    } else {
+        return single;
+    };
+    let s = ((l - hi.log10()) / GRID_LEVEL_BLEND + 0.5).clamp(0.0, 1.0);
+    let w_hi = (s * s * (3.0 - 2.0 * s)) as f32;
+    [GridLevel { minor: lo, major: lo * 5.0, weight: 1.0 - w_hi }, GridLevel { minor: hi, major: hi * 5.0, weight: w_hi }]
+        .into_iter()
+        .filter(|g| g.weight > 0.0)
+        .collect()
+}
+
+/// One line of the drawn grid (#9570), across one of the grid's axes.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GridLineAt {
+    /// Where the line crosses the axis, measured from the grid's centre.
+    pub offset: f64,
+    /// How strongly it is drawn (0..1), before the fade with the distance ([`GridFade`]).
+    pub weight: f32,
+    /// How much of that weight is a major line (0..1): the line's colour and width blend from
+    /// the minor to the major ones by it.
+    pub major: f32,
+}
+
+/// The lines of the grid across one axis, for a view of the given half height: every level of
+/// [`grid_levels`] with its weight, at the grid's own places on the plane (multiples of its step
+/// from the plane's origin), so that a level fading in lies where it will stay once it is the
+/// only one. `at` is the grid's centre on that axis, measured from the plane's origin; the lines
+/// reach `reach` either side of it, at most `cap` steps of each level. A line two levels share is
+/// drawn once, with their weights added.
+pub fn grid_lines(half_height: f64, at: f64, reach: f64, cap: i64) -> Vec<GridLineAt> {
+    let mut out: Vec<GridLineAt> = Vec::new();
+    if !at.is_finite() {
+        return out;
+    }
+    for level in grid_levels(half_height) {
+        let k0 = (at / level.minor).round();
+        if !k0.is_finite() {
+            continue;
+        }
+        let n = ((reach / level.minor) as i64).clamp(1, cap.max(1));
+        for i in -n..=n {
+            let k = (k0 as i64).saturating_add(i);
+            let major = if k.rem_euclid(5) == 0 { 1.0 } else { 0.0 };
+            out.push(GridLineAt { offset: k as f64 * level.minor - at, weight: level.weight, major });
+        }
+    }
+    out.sort_by(|a, b| a.offset.total_cmp(&b.offset));
+    let tol = grid_levels(half_height).iter().map(|g| g.minor).fold(f64::INFINITY, f64::min) * 1e-6;
+    let mut merged: Vec<GridLineAt> = Vec::with_capacity(out.len());
+    for line in out {
+        match merged.last_mut() {
+            Some(last) if (line.offset - last.offset).abs() <= tol => {
+                let weight = last.weight + line.weight;
+                last.major = if weight > 0.0 { (last.major * last.weight + line.major * line.weight) / weight } else { last.major };
+                last.weight = weight.min(1.0);
+            }
+            _ => merged.push(line),
+        }
+    }
+    merged
+}
+
 /// How the grid fades out with the distance from the middle of the view (#4214).
 ///
 /// The grid used to stop at a fixed distance, so its edge showed as a cut across the picture. It
@@ -603,7 +714,7 @@ fn build_scene(
     sc.radius = (b.diagonal() * 0.5).max(cam.half_height()).max(10.0) + b.center().dist(cam.target);
     // Grid on the ground plane (XY with Z up, XZ with Y up), drawn under the model as in the viewport.
     if guides.grid {
-        let (minor, major) = grid_step(cam.half_height());
+        let major = grid_step(cam.half_height()).1;
         // Headless pictures keep the grid on the ground, the viewport's default; an open sketch
         // has its own plane's grid (world coordinates, no camera frame).
         let (c, u, v, slant, w): (Vec3, Vec3, Vec3, f64, Box<dyn Fn(Vec3) -> Vec3>) = if let Some(pl) = open_sketch_plane(s) {
@@ -624,23 +735,31 @@ fn build_scene(
         let ext = grid_ext(cam.half_height(), major, slant);
         let far_reach = grid_far_reach(cam, cam.clip(sc.radius).1, w(c), w(u.cross(v)));
         let fade = GridFade::new(cam.half_height(), slant, ext, far_reach);
-        let n = ((fade.end / minor) as i64).clamp(1, 400);
-        for i in -n..=n {
-            let t = i as f64 * minor;
-            let major_line = (t / major).fract().abs() < 1e-9;
-            let col = if major_line { p.grid_major } else { p.grid };
-            // The viewport's widths (pixels).
-            let width = if major_line { 1.0 } else { 0.7 };
-            // Two lines through the point `c + u * t`: one along v, one along u.
-            for (along, across) in [(v, u), (u, v)] {
-                for (s0, s1, alpha) in fade.pieces(t) {
-                    sc.grid.push(SceneLine {
-                        points: vec![w(c + across * t + along * s0), w(c + across * t + along * s1)],
-                        color: col,
-                        alpha,
-                        width,
-                        on_top: false,
-                    });
+        // The grid's centre on each axis, from the plane's origin (the world's, or the sketch
+        // plane's): a level fading in near a switch of the spacing lies on its own places (#9570).
+        let origin = open_sketch_plane(s).map_or(Vec3::ZERO, |pl| pl.origin);
+        let (at_u, at_v) = ((c - origin).dot(u), (c - origin).dot(v));
+        // Two lines through the point `c + u * t`: one along v, one along u.
+        for (along, across, at) in [(v, u, at_u), (u, v, at_v)] {
+            for line in grid_lines(cam.half_height(), at, fade.end, 400) {
+                let t = line.offset;
+                // The viewport's widths (pixels). The headless picture keeps the palette's two
+                // grid colours: a line two levels share with different kinds is drawn as both,
+                // each as strong as its share.
+                let width = 0.7 + 0.3 * f64::from(line.major);
+                for (col, share) in [(p.grid_major, line.major), (p.grid, 1.0 - line.major)] {
+                    if share <= 0.0 {
+                        continue;
+                    }
+                    for (s0, s1, alpha) in fade.pieces(t) {
+                        sc.grid.push(SceneLine {
+                            points: vec![w(c + across * t + along * s0), w(c + across * t + along * s1)],
+                            color: col,
+                            alpha: alpha * line.weight * share,
+                            width,
+                            on_top: false,
+                        });
+                    }
                 }
             }
         }

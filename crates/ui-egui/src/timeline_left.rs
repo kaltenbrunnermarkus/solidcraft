@@ -1427,7 +1427,7 @@ fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui, names: bool) {
                     vertical_drop_group(pointer, slot, &folder_drop_zones, groups, panel_left, drag_x(&items, pointer.x), items.source_group);
                 let valid_target = folder_target.is_none_or(|target| valid_folder_target(&items, groups, target));
                 if valid_target {
-                    drop_items(app, &plan, &items.features, &items.groups, folder_target, slot.position, slot.y < marker_y);
+                    drop_items(app, plan, &items.features, &items.groups, folder_target, slot.position, slot.y < marker_y);
                 }
             }
         }

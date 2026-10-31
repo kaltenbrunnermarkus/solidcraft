@@ -233,26 +233,59 @@ const GRID_LEVEL_BLEND: f64 = 0.15;
 pub struct GridLevel {
     pub minor: f64,
     pub major: f64,
-    /// 0..1; the levels drawn at one zoom add up to 1.
+    /// 0..1, the level's share of the cross-fade; the levels drawn at one zoom add up to 1. The
+    /// lines only this level has may be drawn weaker than its share ([`grid_lines`]).
     pub weight: f32,
 }
 
-/// The grid levels drawn for a view of the given half height (#9570).
-///
-/// [`grid_step`] switches the spacing in a step (1, 2, 5 times a power of ten), so the whole grid
-/// used to swap at once as the view zoomed through a switch, popping over and over while
-/// scrolling. Near a switch the drawn grid now cross-fades: the outgoing and incoming levels are
-/// both drawn, weighted by how far the zoom is through the switch. Away from a switch only the
-/// level [`grid_step`] gives is drawn, at full strength, so the grid looks as it did. The level
-/// with the larger weight is always [`grid_step`]'s, which sketch snapping, dash lengths and
-/// the tools keep using unchanged: only the drawing fades.
-pub fn grid_levels(half_height: f64) -> Vec<GridLevel> {
-    let (minor, major) = grid_step(half_height);
-    let single = vec![GridLevel { minor, major, weight: 1.0 }];
+/// Where the view is in a cross-fade between two grid levels (#9570).
+#[derive(Clone, Copy, Debug)]
+struct GridBlend {
+    /// The finer and the coarser level's minor steps.
+    lo: f64,
+    hi: f64,
+    /// 0..1 through the cross-fade; the switch of [`grid_step`] is at 0.5.
+    s: f64,
+    /// Whether the coarser step is a whole multiple of the finer one (1 to 2, 5 to 10), so that
+    /// every coarser line is also a finer one. From 2 to 5 it is not.
+    nested: bool,
+}
+
+impl GridBlend {
+    /// The coarser level's share of the cross-fade: a smoothstep through it.
+    fn share_hi(&self) -> f32 {
+        smoothstep(self.s) as f32
+    }
+
+    /// How strongly the lines only one of the two levels has are drawn (finer, coarser).
+    ///
+    /// Nested levels cross-fade as their shares do. Levels that do not nest (2 and 5: lines at
+    /// 0, 2, 4, 5, 6, 8, 10 mm) look restless drawn together, so the finer level's own lines fade
+    /// out over the first half of the cross-fade and the coarser level's own lines fade in over
+    /// the second: the two are never seen at once. The lines both share (every 10 mm, the finer
+    /// level's major lines) stay at full strength throughout, so the grid never goes blank.
+    fn own(&self) -> (f32, f32) {
+        if self.nested {
+            let hi = self.share_hi();
+            (1.0 - hi, hi)
+        } else {
+            (smoothstep(1.0 - 2.0 * self.s) as f32, smoothstep(2.0 * self.s - 1.0) as f32)
+        }
+    }
+}
+
+fn smoothstep(x: f64) -> f64 {
+    let x = x.clamp(0.0, 1.0);
+    x * x * (3.0 - 2.0 * x)
+}
+
+/// The cross-fade the view of the given half height is in, if any (#9570).
+fn grid_blend(half_height: f64) -> Option<GridBlend> {
+    let (minor, _) = grid_step(half_height);
     let raw = half_height / 10.0;
     // grid_step's floor: no finer level is ever drawn, so there is nothing to fade to.
     if !raw.is_finite() || !minor.is_finite() || raw <= 1e-3 || minor <= 0.0 {
-        return single;
+        return None;
     }
     let p = 10f64.powf((minor.log10() + 1e-9).floor());
     let mantissa = (minor / p).round();
@@ -273,11 +306,33 @@ pub fn grid_levels(half_height: f64) -> Vec<GridLevel> {
     } else if l - minor.log10() < half && finer >= 1e-3 * (1.0 - 1e-9) {
         (finer, minor)
     } else {
-        return single;
+        return None;
     };
     let s = ((l - hi.log10()) / GRID_LEVEL_BLEND + 0.5).clamp(0.0, 1.0);
-    let w_hi = (s * s * (3.0 - 2.0 * s)) as f32;
-    [GridLevel { minor: lo, major: lo * 5.0, weight: 1.0 - w_hi }, GridLevel { minor: hi, major: hi * 5.0, weight: w_hi }]
+    // The switch from 2 to 5 is the only one whose coarser step is not a whole multiple of the
+    // finer one. It takes the same zoom range as the others, so the grid is cross-fading at the
+    // same zooms as before; its two halves are each as long as half a nested cross-fade.
+    let nested = ((hi / lo) - (hi / lo).round()).abs() < 1e-6;
+    Some(GridBlend { lo, hi, s, nested })
+}
+
+/// The grid levels drawn for a view of the given half height (#9570).
+///
+/// [`grid_step`] switches the spacing in a step (1, 2, 5 times a power of ten), so the whole grid
+/// used to swap at once as the view zoomed through a switch, popping over and over while
+/// scrolling. Near a switch the drawn grid now cross-fades: the outgoing and incoming levels are
+/// both drawn, weighted by how far the zoom is through the switch (from 2 to 5 one after the
+/// other, see [`grid_lines`]). Away from a switch only the level [`grid_step`] gives is drawn, at
+/// full strength, so the grid looks as it did. The level with the larger weight is always
+/// [`grid_step`]'s, which sketch snapping, dash lengths and the tools keep using unchanged: only
+/// the drawing fades.
+pub fn grid_levels(half_height: f64) -> Vec<GridLevel> {
+    let Some(b) = grid_blend(half_height) else {
+        let (minor, major) = grid_step(half_height);
+        return vec![GridLevel { minor, major, weight: 1.0 }];
+    };
+    let w_hi = b.share_hi();
+    [GridLevel { minor: b.lo, major: b.lo * 5.0, weight: 1.0 - w_hi }, GridLevel { minor: b.hi, major: b.hi * 5.0, weight: w_hi }]
         .into_iter()
         .filter(|g| g.weight > 0.0)
         .collect()
@@ -296,42 +351,53 @@ pub struct GridLineAt {
 }
 
 /// The lines of the grid across one axis, for a view of the given half height: every level of
-/// [`grid_levels`] with its weight, at the grid's own places on the plane (multiples of its step
-/// from the plane's origin), so that a level fading in lies where it will stay once it is the
-/// only one. `at` is the grid's centre on that axis, measured from the plane's origin; the lines
-/// reach `reach` either side of it, at most `cap` steps of each level. A line two levels share is
-/// drawn once, with their weights added.
+/// [`grid_levels`], at the grid's own places on the plane (multiples of its step from the plane's
+/// origin), so that a level fading in lies where it will stay once it is the only one. `at` is
+/// the grid's centre on that axis, measured from the plane's origin; the lines reach `reach`
+/// either side of it, at most `cap` steps of each level. A line two levels share is drawn once,
+/// with their weights added; a line only one level has is drawn as strongly as that level's own
+/// lines, which from 2 to 5 fade one after the other, never both at once.
 pub fn grid_lines(half_height: f64, at: f64, reach: f64, cap: i64) -> Vec<GridLineAt> {
-    let mut out: Vec<GridLineAt> = Vec::new();
     if !at.is_finite() {
-        return out;
+        return Vec::new();
     }
-    for level in grid_levels(half_height) {
-        let k0 = (at / level.minor).round();
+    // (minor step, share of the cross-fade, strength of its own lines) per level.
+    let levels: Vec<(f64, f32, f32)> = match grid_blend(half_height) {
+        Some(b) => {
+            let (share_hi, (own_lo, own_hi)) = (b.share_hi(), b.own());
+            vec![(b.lo, 1.0 - share_hi, own_lo), (b.hi, share_hi, own_hi)]
+        }
+        None => vec![(grid_step(half_height).0, 1.0, 1.0)],
+    };
+    // (line, own strength, shared by two levels)
+    let mut out: Vec<(GridLineAt, f32, bool)> = Vec::new();
+    for &(step, share, own) in &levels {
+        let k0 = (at / step).round();
         if !k0.is_finite() {
             continue;
         }
-        let n = ((reach / level.minor) as i64).clamp(1, cap.max(1));
+        let n = ((reach / step) as i64).clamp(1, cap.max(1));
         for i in -n..=n {
             let k = (k0 as i64).saturating_add(i);
             let major = if k.rem_euclid(5) == 0 { 1.0 } else { 0.0 };
-            out.push(GridLineAt { offset: k as f64 * level.minor - at, weight: level.weight, major });
+            out.push((GridLineAt { offset: k as f64 * step - at, weight: share, major }, own, false));
         }
     }
-    out.sort_by(|a, b| a.offset.total_cmp(&b.offset));
-    let tol = grid_levels(half_height).iter().map(|g| g.minor).fold(f64::INFINITY, f64::min) * 1e-6;
-    let mut merged: Vec<GridLineAt> = Vec::with_capacity(out.len());
-    for line in out {
+    out.sort_by(|a, b| a.0.offset.total_cmp(&b.0.offset));
+    let tol = levels.iter().map(|l| l.0).fold(f64::INFINITY, f64::min) * 1e-6;
+    let mut merged: Vec<(GridLineAt, f32, bool)> = Vec::with_capacity(out.len());
+    for (line, own, _) in out {
         match merged.last_mut() {
-            Some(last) if (line.offset - last.offset).abs() <= tol => {
+            Some((last, _, shared)) if (line.offset - last.offset).abs() <= tol => {
                 let weight = last.weight + line.weight;
                 last.major = if weight > 0.0 { (last.major * last.weight + line.major * line.weight) / weight } else { last.major };
                 last.weight = weight.min(1.0);
+                *shared = true;
             }
-            _ => merged.push(line),
+            _ => merged.push((line, own, false)),
         }
     }
-    merged
+    merged.into_iter().map(|(line, own, shared)| if shared { line } else { GridLineAt { weight: own, ..line } }).filter(|l| l.weight > 0.0).collect()
 }
 
 /// How the grid fades out with the distance from the middle of the view (#4214).

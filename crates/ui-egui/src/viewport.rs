@@ -11576,23 +11576,23 @@ mod grid_plane_tests {
     }
 
     /// #9570: zooming through a switch of the grid's spacing swapped the whole grid at once. At
-    /// the switch the window now draws both levels at half strength, each on its own places,
-    /// and a line two levels share with different kinds takes a colour between the two.
+    /// a nested switch the window now draws both levels at half strength, each on its own
+    /// places; at the switch from 2 to 5, which do not nest, neither level's own lines; and a
+    /// line two levels share with different kinds takes a colour between the two.
     #[test]
     fn the_grid_draws_both_levels_at_a_switch_of_its_spacing() {
         let rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(800.0, 600.0));
-        let mut app = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
-        app.ui.show_grid = true;
-        app.ui.perspective = false;
-        app.cam.pitch = std::f64::consts::FRAC_PI_2;
-        app.cam.yaw = 0.0;
-        app.cam.target = Vec3::ZERO;
-        // A half height where the spacing switches from 2 to 5 mm.
-        app.cam.distance = 1.0;
-        app.cam.distance = 50.0 / app.cam.half_height();
-        let scene = build_sketch_scene(&app, &projection(&app, rect));
-        // The strongest alpha a line across X at `x` is drawn with near the middle of the view.
-        let alpha_at = |x: f32| {
+        // The strongest alpha a line across X at `x` is drawn with, at a half height of `hh`.
+        let alpha_at = |hh: f64, x: f32| {
+            let mut app = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
+            app.ui.show_grid = true;
+            app.ui.perspective = false;
+            app.cam.pitch = std::f64::consts::FRAC_PI_2;
+            app.cam.yaw = 0.0;
+            app.cam.target = Vec3::ZERO;
+            app.cam.distance = 1.0;
+            app.cam.distance = hh / app.cam.half_height();
+            let scene = build_sketch_scene(&app, &projection(&app, rect));
             scene
                 .under
                 .as_chunks::<32>()
@@ -11607,10 +11607,16 @@ mod grid_plane_tests {
                 .unwrap_or(0)
         };
         let full = u16::from(c4(Tokens::get().grid)[3]);
+        // A half height where the spacing switches from 5 to 10 mm (nested): the 5 mm lines
+        // cross-fade at about half strength.
+        let a = u16::from(alpha_at(100.0, 5.0));
+        assert!(a > full / 4 && a < full * 3 / 4, "the line at 5 mm is drawn at {a} of {full}: both levels cross-fade");
+        // From 2 to 5 mm (not nested) the finer level's own lines are gone before the coarser
+        // level's own lines appear: right at the switch neither is drawn, the shared 10 mm are.
         for x in [2.0, 5.0] {
-            let a = u16::from(alpha_at(x));
-            assert!(a > full / 4 && a < full * 3 / 4, "the line at {x} mm is drawn at {a} of {full}: both levels cross-fade");
+            assert_eq!(alpha_at(50.0, x), 0, "the line at {x} mm is drawn while 2 and 5 swap");
         }
+        assert!(alpha_at(50.0, 10.0) > 0);
         assert_eq!(grid_blend([0, 0, 0, 0], [200, 100, 50, 255], 0.5), [100, 50, 25, 128]);
         assert_eq!(grid_blend([1, 2, 3, 4], [9, 9, 9, 9], 0.0), [1, 2, 3, 4]);
         assert_eq!(grid_blend([1, 2, 3, 4], [9, 9, 9, 9], f32::NAN), [1, 2, 3, 4]);

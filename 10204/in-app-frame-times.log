@@ -1,0 +1,33 @@
+run 1 A load 19.55 14.99 22.66
+A 1 {"shown_after_s": 0.6}
+A 1 {"selected": 1440, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+A 1 {"round": 0, "hover_changes": {"n": 48, "median_ms": 14.309, "p90_ms": 17.444, "min_ms": 8.953, "max_ms": 82.493}, "all_moves": {"n": 60, "median_ms": 13.8, "p90_ms": 17.444, "min_ms": 1.594, "max_ms": 82.493}}
+A 1 {"round": 1, "hover_changes": {"n": 48, "median_ms": 9.164, "p90_ms": 10.239, "min_ms": 7.558, "max_ms": 20.759}, "all_moves": {"n": 60, "median_ms": 9.105, "p90_ms": 10.109, "min_ms": 1.535, "max_ms": 20.759}}
+run 1 B load 18.63 16.53 22.43
+B 1 {"shown_after_s": 0.4}
+B 1 {"selected": 1440, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+B 1 {"round": 0, "hover_changes": {"n": 48, "median_ms": 13.726, "p90_ms": 15.515, "min_ms": 5.645, "max_ms": 83.301}, "all_moves": {"n": 60, "median_ms": 12.092, "p90_ms": 15.496, "min_ms": 1.392, "max_ms": 83.301}}
+B 1 {"round": 1, "hover_changes": {"n": 48, "median_ms": 6.98, "p90_ms": 7.736, "min_ms": 5.268, "max_ms": 7.994}, "all_moves": {"n": 60, "median_ms": 6.054, "p90_ms": 7.643, "min_ms": 1.406, "max_ms": 7.994}}
+run 2 A load 14.89 15.89 21.63
+A 2 {"shown_after_s": 0.6}
+A 2 {"selected": 1440, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+A 2 {"round": 0, "hover_changes": {"n": 48, "median_ms": 16.774, "p90_ms": 18.196, "min_ms": 8.142, "max_ms": 85.98}, "all_moves": {"n": 60, "median_ms": 16.036, "p90_ms": 18.043, "min_ms": 1.699, "max_ms": 85.98}}
+A 2 {"round": 1, "hover_changes": {"n": 48, "median_ms": 9.828, "p90_ms": 10.212, "min_ms": 8.316, "max_ms": 10.861}, "all_moves": {"n": 60, "median_ms": 9.776, "p90_ms": 10.146, "min_ms": 1.711, "max_ms": 10.861}}
+run 2 B load 24.67 18.39 21.87
+B 2 {"shown_after_s": 0.5}
+B 2 {"selected": 1440, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+B 2 {"round": 0, "hover_changes": {"n": 48, "median_ms": 15.552, "p90_ms": 16.367, "min_ms": 7.902, "max_ms": 91.815}, "all_moves": {"n": 60, "median_ms": 13.915, "p90_ms": 16.365, "min_ms": 1.64, "max_ms": 91.815}}
+B 2 {"round": 1, "hover_changes": {"n": 48, "median_ms": 7.785, "p90_ms": 8.593, "min_ms": 5.269, "max_ms": 9.068}, "all_moves": {"n": 60, "median_ms": 6.769, "p90_ms": 8.527, "min_ms": 1.991, "max_ms": 9.068}}
+run 3 A load 24.90 20.62 22.33
+A 3 {"shown_after_s": 0.6}
+A 3 {"selected": 1440, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+A 3 {"round": 0, "hover_changes": {"n": 48, "median_ms": 16.534, "p90_ms": 18.177, "min_ms": 9.729, "max_ms": 94.595}, "all_moves": {"n": 60, "median_ms": 14.792, "p90_ms": 18.113, "min_ms": 1.693, "max_ms": 94.595}}
+A 3 {"round": 1, "hover_changes": {"n": 48, "median_ms": 10.307, "p90_ms": 11.287, "min_ms": 8.8, "max_ms": 19.633}, "all_moves": {"n": 60, "median_ms": 10.085, "p90_ms": 11.183, "min_ms": 1.804, "max_ms": 19.633}}
+A 3 {"shot": "/home/markus/solidcraft-p5/out/10204/app-final/A.png", "hover": "Edge { body: \"Body658\", index: 10, mid: Vec3 { x: 108.0, y: 274.0, z: 8.0 }, point: Vec3 { x: 105.11738283646059, y: 274.0, z: 8.0 } }"}
+run 3 B load 25.26 21.38 22.36
+B 3 {"shown_after_s": 0.5}
+B 3 {"selected": 1440, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+B 3 {"round": 0, "hover_changes": {"n": 48, "median_ms": 11.578, "p90_ms": 14.944, "min_ms": 5.541, "max_ms": 80.664}, "all_moves": {"n": 60, "median_ms": 10.674, "p90_ms": 14.866, "min_ms": 1.282, "max_ms": 80.664}}
+B 3 {"round": 1, "hover_changes": {"n": 48, "median_ms": 5.864, "p90_ms": 7.458, "min_ms": 5.319, "max_ms": 16.483}, "all_moves": {"n": 60, "median_ms": 5.752, "p90_ms": 7.428, "min_ms": 1.395, "max_ms": 16.483}}
+B 3 {"shot": "/home/markus/solidcraft-p5/out/10204/app-final/B.png", "hover": "Edge { body: \"Body658\", index: 10, mid: Vec3 { x: 108.0, y: 274.0, z: 8.0 }, point: Vec3 { x: 105.11738283646059, y: 274.0, z: 8.0 } }"}
+DONE

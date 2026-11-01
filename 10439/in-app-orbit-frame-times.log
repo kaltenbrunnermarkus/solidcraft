@@ -1,0 +1,33 @@
+run 1 A load 28.24 23.62 42.42 04:16:24
+A 1 {"shown_after_s": 63.3, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+A 1 {"round": 0, "frame_ms": {"n": 1, "median_ms": 26.698, "p90_ms": 26.698, "min_ms": 26.698, "max_ms": 26.698}}
+A 1 {"round": 1, "frame_ms": {"n": 1, "median_ms": 25.489, "p90_ms": 25.489, "min_ms": 25.489, "max_ms": 25.489}}
+A 1 {"round": 2, "frame_ms": {"n": 1, "median_ms": 28.798, "p90_ms": 28.798, "min_ms": 28.798, "max_ms": 28.798}}
+run 1 B load 29.17 24.94 41.23 04:17:47
+B 1 {"shown_after_s": 64.0, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+B 1 {"round": 0, "frame_ms": {"n": 1, "median_ms": 4.615, "p90_ms": 4.615, "min_ms": 4.615, "max_ms": 4.615}}
+B 1 {"round": 1, "frame_ms": {"n": 1, "median_ms": 7.209, "p90_ms": 7.209, "min_ms": 7.209, "max_ms": 7.209}}
+B 1 {"round": 2, "frame_ms": {"n": 1, "median_ms": 4.785, "p90_ms": 4.785, "min_ms": 4.785, "max_ms": 4.785}}
+run 2 A load 28.95 25.68 40.05 04:19:12
+A 2 {"shown_after_s": 603.4, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+A 2 {"round": 0, "frame_ms": {"n": 40, "median_ms": 15.166, "p90_ms": 19.602, "min_ms": 10.406, "max_ms": 52.375}}
+A 2 {"round": 1, "frame_ms": {"n": 40, "median_ms": 11.247, "p90_ms": 15.198, "min_ms": 10.278, "max_ms": 16.983}}
+A 2 {"round": 2, "frame_ms": {"n": 40, "median_ms": 16.001, "p90_ms": 17.473, "min_ms": 10.603, "max_ms": 18.037}}
+run 2 B load 10.29 13.76 26.88 04:30:58
+B 2 {"shown_after_s": 603.3, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+B 2 {"round": 0, "frame_ms": {"n": 40, "median_ms": 3.5, "p90_ms": 4.773, "min_ms": 2.709, "max_ms": 6.412}}
+B 2 {"round": 1, "frame_ms": {"n": 40, "median_ms": 3.71, "p90_ms": 4.65, "min_ms": 2.814, "max_ms": 5.545}}
+B 2 {"round": 2, "frame_ms": {"n": 40, "median_ms": 3.789, "p90_ms": 5.098, "min_ms": 2.732, "max_ms": 5.268}}
+run 3 A load 5.10 4.88 14.87 04:42:26
+A 3 {"shown_after_s": 603.2, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+A 3 {"round": 0, "frame_ms": {"n": 40, "median_ms": 10.418, "p90_ms": 13.468, "min_ms": 9.774, "max_ms": 15.167}}
+A 3 {"round": 1, "frame_ms": {"n": 40, "median_ms": 10.911, "p90_ms": 14.626, "min_ms": 9.896, "max_ms": 15.064}}
+A 3 {"round": 2, "frame_ms": {"n": 40, "median_ms": 10.398, "p90_ms": 13.349, "min_ms": 9.683, "max_ms": 14.191}}
+A 3 {"shot": "/home/markus/solidcraft-p2/out/orbit/app/A.png"}
+run 3 B load 4.16 4.43 9.41 04:53:49
+B 3 {"shown_after_s": 604.1, "draw": {"draw_calls": 1, "line_segments": 0, "supersampled": false, "triangles": 0}}
+B 3 {"round": 0, "frame_ms": {"n": 40, "median_ms": 3.109, "p90_ms": 4.436, "min_ms": 2.708, "max_ms": 8.354}}
+B 3 {"round": 1, "frame_ms": {"n": 40, "median_ms": 3.6, "p90_ms": 4.477, "min_ms": 2.69, "max_ms": 5.108}}
+B 3 {"round": 2, "frame_ms": {"n": 40, "median_ms": 3.591, "p90_ms": 4.618, "min_ms": 2.747, "max_ms": 5.443}}
+B 3 {"shot": "/home/markus/solidcraft-p2/out/orbit/app/B.png"}
+DONE
